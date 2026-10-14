@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>文字转表格 · 逗号分列 / 句号分行</title>
+<style>
+  :root{
+    --bg:#f5f6f8; --card:#fff; --line:#e3e6ec; --text:#1f2329;
+    --muted:#6b7280; --brand:#2563eb; --brand-d:#1d4ed8;
+    --warn:#b45309; --warn-bg:#fff7ed; --ok:#047857;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+       font:14px/1.6 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+  .wrap{max-width:1080px;margin:0 auto;padding:24px 18px 64px}
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:var(--muted);margin:0 0 20px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;
+        padding:18px;margin-bottom:16px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+  .row{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end}
+  .field{display:flex;flex-direction:column;gap:6px}
+  .field label{font-size:12px;color:var(--muted)}
+  input,textarea,button{font:inherit;color:inherit}
+  input[type=number],textarea{border:1px solid var(--line);border-radius:8px;
+        padding:8px 10px;background:#fff;outline:none}
+  input[type=number]{width:110px}
+  input[type=number]:focus,textarea:focus{border-color:var(--brand);
+        box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+  textarea{width:100%;min-height:140px;resize:vertical;
+           font-family:ui-monospace,Consolas,"Microsoft YaHei",monospace}
+  button{border:1px solid var(--line);background:#fff;border-radius:8px;
+         padding:8px 14px;cursor:pointer;transition:.15s}
+  button:hover{background:#f2f4f7}
+  button.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+  button.primary:hover{background:var(--brand-d)}
+  .hint{font-size:12px;color:var(--muted)}
+  kbd{background:#f2f4f7;border:1px solid var(--line);border-radius:4px;
+      padding:0 5px;font-family:ui-monospace,monospace}
+  #notes{margin:0 0 14px;padding:0;list-style:none}
+  #notes li{background:var(--warn-bg);border:1px solid #fed7aa;color:var(--warn);
+            border-radius:8px;padding:8px 12px;margin-bottom:6px;font-size:13px}
+  #notes li.ok{background:#ecfdf5;border-color:#a7f3d0;color:var(--ok)}
+  .tablebox{overflow:auto;border:1px solid var(--line);border-radius:10px}
+  table{border-collapse:collapse;width:100%;min-width:420px}
+  th,td{border:1px solid var(--line);padding:8px 12px;text-align:left;
+        vertical-align:top;min-width:80px}
+  th{background:#f8fafc;font-weight:600}
+  tbody tr:nth-child(even){background:#fcfcfd}
+  td[contenteditable]:focus,th[contenteditable]:focus{
+        outline:2px solid var(--brand);outline-offset:-2px;background:#eff6ff}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+  .empty{color:var(--muted);padding:28px;text-align:center}
+  @media print{body{background:#fff}.no-print{display:none!important}
+               .card{border:none;box-shadow:none;padding:0}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>文字转表格</h1>
+  <p class="sub">用 <b>逗号</b> 分列（, 或 ，），用 <b>句号</b> 分行（。或 .），换行同样算分行。</p>
+
+  <div class="card no-print">
+    <div class="row">
+      <div class="field"><label for="cols">列数</label>
+        <input id="cols" type="number" min="1" max="50" value="3"></div>
+      <div class="field"><label for="rows">行数</label>
+        <input id="rows" type="number" min="1" max="500" value="4"></div>
+      <div class="field"><label for="header">首行为表头</label>
+        <input id="header" type="checkbox" checked style="width:auto;height:18px"></div>
+      <div style="flex:1"></div>
+      <button id="sample">填入示例</button>
+      <button id="clear">清空</button>
+    </div>
+  </div>
+
+  <div class="card no-print">
+    <div class="field">
+      <label for="src">粘贴文字（逗号分列，句号分行）</label>
+      <textarea id="src" placeholder="姓名,年龄,城市。张三,20,北京。李四,22,上海。王五,25,广州。"></textarea>
+    </div>
+    <div class="toolbar">
+      <button id="parse" class="primary">生成表格</button>
+      <span class="hint">输入时自动刷新，也可按 <kbd>Ctrl</kbd>+<kbd>Enter</kbd></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <ul id="notes"></ul>
+    <div id="tablebox" class="tablebox"><div class="empty">表格将显示在这里</div></div>
+    <div class="toolbar no-print">
+      <button id="copyMd">复制 Markdown</button>
+      <button id="copyTsv">复制到 Excel</button>
+      <button id="csv">下载 CSV</button>
+      <button id="xls">下载 Excel</button>
+      <button id="doc">下载 Word</button>
+      <button id="print">打印 / 存 PDF</button>
+    </div>
+    <p class="hint no-print" style="margin-top:10px">生成后表格单元格可直接点击修改，再导出。</p>
+  </div>
+</div>
+
+<script>
+(function(){
+  const $ = s => document.querySelector(s);
+  const ROW_RE = /[。;；\n]+|(?<!\d)\.(?!\d)/;
+  const COL_RE = /[,，\t|]+/;
+
+  const esc = s => String(s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  function splitRows(text){
+    return text.replace(/\r\n?/g,'\n').split(ROW_RE)
+               .map(s=>s.trim()).filter(s=>s.length>0);
+  }
+  function splitCols(line){
+    return line.split(COL_RE).map(s=>s.trim());
+  }
+
+  function parse(text, cols, rows){
+    const notes = [];
+    let grid = splitRows(text).map(splitCols).filter(r => r.some(c => c !== ''));
+    const flat = grid.flat().filter(c => c !== '');
+    if (!flat.length) return { grid: [], notes: ['没有解析到任何内容。'] };
+
+    if (grid.length !== rows){
+      const count = grid.length;
+      if (flat.length === rows * cols){
+        const out = [];
+        for (let i=0;i<rows;i++) out.push(flat.slice(i*cols,(i+1)*cols));
+        grid = out;
+        notes.push('未检测到 ' + rows + ' 组句号（实际 ' + count +
+                   ' 组），已按“每 ' + cols + ' 个单元格一行”自动切成 ' + rows + ' 行。');
+      } else {
+        notes.push('句号分组得到 ' + count + ' 行，与设定行数 ' + rows +
+                   ' 不一致，已自动补齐/截断。');
+      }
+    }
+
+    const norm = [];
+    for (let i=0;i<rows;i++){
+      let r = (grid[i] || []).slice();
+      if (r.length !== cols){
+        notes.push('第 ' + (i+1) + ' 行有 ' + r.length + ' 个单元格（期望 ' +
+                   cols + '），已自动补齐/截断。');
+      }
+      while (r.length < cols) r.push('');
+      norm.push(r.slice(0, cols));
+    }
+    return { grid: norm, notes };
+  }
+
+  function render(grid, headerFirst){
+    const box = $('#tablebox');
+    if (!grid.length || grid.every(r => r.every(c => c === ''))){
+      box.innerHTML = '<div class="empty">表格将显示在这里</div>';
+      return;
+    }
+    const td = (tag,c) =>
+      '<' + tag + ' contenteditable="true">' + (esc(c) || '&nbsp;') + '</' + tag + '>';
+    let html = '<table>';
+    if (headerFirst && grid.length > 1){
+      html += '<thead><tr>' + grid[0].map(c => td('th', c)).join('') + '</tr></thead>';
+      html += '<tbody>' + grid.slice(1)
+              .map(r => '<tr>' + r.map(c => td('td', c)).join('') + '</tr>').join('') +
+              '</tbody>';
+    } else {
+      html += '<tbody>' + grid
+              .map(r => '<tr>' + r.map(c => td('td', c)).join('') + '</tr>').join('') +
+              '</tbody>';
+    }
+    html += '</table>';
+    box.innerHTML = html;
+  }
+
+  function readTable(){
+    const t = $('#tablebox table');
+    if (!t) return null;
+    return [...t.querySelectorAll('tr')]
+      .map(tr => [...tr.children].map(cell => cell.textContent.trim()));
+  }
+
+  let timer = null;
+  function update(){
+    const cols = Math.min(50, Math.max(1, +$('#cols').value || 1));
+    const rows = Math.min(500, Math.max(1, +$('#rows').value || 1));
+    const text = $('#src').value;
+    if (!text.trim()){ $('#notes').innerHTML = ''; render([], false); return; }
+    const r = parse(text, cols, rows);
+    $('#notes').innerHTML = r.notes.length
+      ? r.notes.map(n => '<li>' + esc(n) + '</li>').join('')
+      : '<li class="ok">已按 ' + rows + ' 行 × ' + cols + ' 列 生成。</li>';
+    render(r.grid, $('#header').checked);
+  }
+  const schedule = () => { clearTimeout(timer); timer = setTimeout(update, 150); };
+
+  function download(name, mime, data){
+    const blob = new Blob(['\ufeff', data], { type: mime });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 800);
+  }
+  function toCSV(g){
+    return g.map(r => r.map(c => '"' + c.replace(/"/g,'""') + '"').join(',')).join('\r\n');
+  }
+  function toMarkdown(g){
+    if (!g.length) return '';
+    const e = s => s.replace(/\|/g,'\\|').replace(/\n/g,' ');
+    const lines = ['| ' + g[0].map(e).join(' | ') + ' |',
+                   '| ' + g[0].map(() => '---').join(' | ') + ' |'];
+    g.slice(1).forEach(r => lines.push('| ' + r.map(e).join(' | ') + ' |'));
+    return lines.join('\n');
+  }
+  function toHTMLTable(g){
+    const cells = (tag, arr) =>
+      '<tr>' + arr.map(c => '<' + tag + '>' + esc(c) + '</' + tag + '>').join('') + '</tr>';
+    return '<table border="1" style="border-collapse:collapse">' +
+           cells('th', g[0]) + g.slice(1).map(r => cells('td', r)).join('') + '</table>';
+  }
+  function flash(btn, txt){
+    const old = btn.textContent;
+    btn.textContent = txt;
+    setTimeout(() => btn.textContent = old, 1200);
+  }
+  async function copy(text, btn){
+    try { await navigator.clipboard.writeText(text); }
+    catch(e){
+      const ta = document.createElement('textarea');
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); ta.remove();
+    }
+    flash(btn, '已复制 ✓');
+  }
+  const stamp = () => new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+
+  $('#parse').onclick = update;
+  $('#cols').oninput = schedule;
+  $('#rows').oninput = schedule;
+  $('#header').onchange = schedule;
+  $('#src').oninput = schedule;
+  $('#src').onkeydown = e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter'){ e.preventDefault(); update(); }
+  };
+  $('#sample').onclick = () => {
+    $('#cols').value = 3; $('#rows').value = 4;
+    $('#src').value = '姓名,年龄,城市。张三,20,北京。李四,22,上海。王五,25,广州。';
+    $('#header').checked = true;
+    update();
+  };
+  $('#clear').onclick = () => {
+    $('#src').value = ''; $('#notes').innerHTML = ''; render([], false);
+    $('#src').focus();
+  };
+
+  $('#copyMd').onclick = e => { const g = readTable(); if (g) copy(toMarkdown(g), e.target); };
+  $('#copyTsv').onclick = e => {
+    const g = readTable();
+    if (g) copy(g.map(r => r.join('\t')).join('\n'), e.target);
+  };
+  $('#csv').onclick  = () => { const g = readTable(); if (g) download('表格-' + stamp() + '.csv', 'text/csv;charset=utf-8', toCSV(g)); };
+  $('#xls').onclick  = () => { const g = readTable();
+    if (g) download('表格-' + stamp() + '.xls', 'application/vnd.ms-excel;charset=utf-8',
+      '<html><head><meta charset="utf-8"></head><body>' + toHTMLTable(g) + '</body></html>'); };
+  $('#doc').onclick  = () => { const g = readTable();
+    if (g) download('表格-' + stamp() + '.doc', 'application/msword;charset=utf-8',
+      '<html><head><meta charset="utf-8"></head><body>' + toHTMLTable(g) + '</body></html>'); };
+  $('#print').onclick = () => window.print();
+
+  update();
+})();
+</script>
+</body>
+</html>
