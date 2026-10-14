@@ -1,0 +1,504 @@
+# -*- coding: utf-8 -*-
+"""
+文字转表格（窗口版）
+====================
+
+* 图形界面：Tkinter，Python 自带，无需安装第三方库
+* 成段文字 → 表格：逗号分列（, ，），句号分行（。 .）
+* 交互设定列数、行数，可勾选“首行为表头”
+* 生成可编辑表格：每个单元格都能直接点击修改
+* 一键导出 CSV / Excel(.xlsx) / Word(.docx) / Markdown / HTML
+* 一键复制到剪贴板（可直接粘进 Excel 自动分列）
+
+运行：   python 文字转表格.py
+打包：   pip install pyinstaller
+         pyinstaller -F -w --name 文字转表格 文字转表格.py
+"""
+
+from __future__ import annotations
+
+import csv
+import re
+import sys
+import unicodedata
+from datetime import datetime
+from pathlib import Path
+
+import tkinter as tk
+from tkinter import filedialog, messagebox, ttk
+
+ROW_SPLIT = re.compile(r"[。;；\n]+|(?<!\d)\.(?!\d)")   # 句号 / 分号 / 换行 分行
+COL_SPLIT = re.compile(r"[,，\t|]+")                    # 逗号 / 制表符 / 竖线 分列
+
+APP_TITLE = "文字转表格 · 逗号分列 / 句号分行"
+SAMPLE = "姓名,年龄,城市。张三,20,北京。李四,22,上海。王五,25,广州。"
+
+
+# ────────────────────────────── 解析与工具 ──────────────────────────────
+def char_width(ch: str) -> int:
+    if unicodedata.combining(ch):
+        return 0
+    return 2 if unicodedata.east_asian_width(ch) in ("W", "F") else 1
+
+
+def text_width(s: str) -> int:
+    return sum(char_width(c) for c in s)
+
+
+def parse_text(text: str, cols: int, rows: int) -> tuple[list[list[str]], list[str]]:
+    """把成段文字解析成 rows×cols 的二维表，返回 (表格, 提示信息)。"""
+    notes: list[str] = []
+    grid = [[c.strip() for c in COL_SPLIT.split(r)]
+            for r in ROW_SPLIT.split(text.replace("\r\n", "\n")) if r.strip()]
+    grid = [r for r in grid if any(r)]
+    flat = [c for r in grid for c in r if c != ""]
+
+    if not flat:
+        return [], ["没有解析到任何内容。"]
+
+    if len(grid) != rows:
+        count = len(grid)
+        if len(flat) == rows * cols:                      # 容错：整体按列数切分
+            grid = [flat[i * cols:(i + 1) * cols] for i in range(rows)]
+            notes.append(f"未检测到 {rows} 组句号（实际 {count} 组），"
+                         f"已按“每 {cols} 个单元格一行”自动切成 {rows} 行。")
+        else:
+            notes.append(f"句号分组得到 {count} 行，与设定行数 {rows} 不一致，已自动补齐/截断。")
+
+    out: list[list[str]] = []
+    for i in range(rows):
+        row = list(grid[i]) if i < len(grid) else []
+        if len(row) != cols:
+            notes.append(f"第 {i + 1} 行有 {len(row)} 个单元格（期望 {cols}），已自动补齐/截断。")
+        out.append((row + [""] * cols)[:cols])
+    return out, notes
+
+
+def choose_font(root: tk.Misc, size: int = 10, bold: bool = False):
+    from tkinter import font as tkfont
+    try:
+        fams = set(tkfont.families(root))
+    except tk.TclError:
+        fams = set()
+    for fam in ("Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC",
+                "Noto Sans CJK SC", "Segoe UI"):
+        if fam in fams:
+            return (fam, size, "bold") if bold else (fam, size)
+    return ("TkDefaultFont", size, "bold") if bold else ("TkDefaultFont", size)
+
+
+def enable_dpi():
+    """Windows 高分屏下让字体不发虚。"""
+    if sys.platform == "win32":
+        try:
+            import ctypes
+            ctypes.windll.shcore.SetProcessDpiAwareness(1)
+        except Exception:
+            pass
+
+
+# ────────────────────────────── 可编辑表格控件 ──────────────────────────────
+class Sheet(ttk.Frame):
+    """用 Entry 拼成的可编辑、可滚动表格。"""
+
+    def __init__(self, master, body_font, head_font):
+        super().__init__(master, style="Card.TFrame")
+        self.body_font = body_font
+        self.head_font = head_font
+        self.cells: list[list[tk.Entry]] = []
+
+        self.canvas = tk.Canvas(self, highlightthickness=0, background="#ffffff")
+        self.vsb = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
+        self.hsb = ttk.Scrollbar(self, orient="horizontal", command=self.canvas.xview)
+        self.canvas.configure(yscrollcommand=self.vsb.set, xscrollcommand=self.hsb.set)
+
+        self.canvas.grid(row=0, column=0, sticky="nsew")
+        self.vsb.grid(row=0, column=1, sticky="ns")
+        self.hsb.grid(row=1, column=0, sticky="ew")
+        self.rowconfigure(0, weight=1)
+        self.columnconfigure(0, weight=1)
+
+        self.inner = tk.Frame(self.canvas, background="#ffffff")
+        self.win = self.canvas.create_window((0, 0), window=self.inner, anchor="nw")
+        self.inner.bind("<Configure>", lambda e: self._refresh_scroll())
+        self.canvas.bind("<Configure>", self._on_canvas)
+        self.canvas.bind("<MouseWheel>", self._wheel)
+
+    # --- 内部事件 ---
+    def _refresh_scroll(self, *_):
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+
+    def _on_canvas(self, event):
+        self.canvas.itemconfigure(self.win, width=max(event.width, self.inner.winfo_reqwidth()))
+        self._refresh_scroll()
+
+    def _wheel(self, event):
+        step = int(-event.delta / 120) or (1 if event.delta > 0 else -1)
+        if event.state & 0x1:          # 按住 Shift 横向滚动
+            self.canvas.xview_scroll(step, "units")
+        else:
+            self.canvas.yview_scroll(step, "units")
+
+    # --- 对外接口 ---
+    def build(self, grid: list[list[str]], header: bool = True):
+        for w in self.inner.winfo_children():
+            w.destroy()
+        self.cells = []
+        if not grid:
+            self.canvas.configure(scrollregion=(0, 0, 0, 0))
+            return
+
+        for r, row in enumerate(grid):
+            line = []
+            for c, val in enumerate(row):
+                is_head = header and r == 0 and len(grid) > 1
+                e = tk.Entry(
+                    self.inner,
+                    font=self.head_font if is_head else self.body_font,
+                    relief="flat", highlightthickness=1,
+                    highlightbackground="#d8dde6", highlightcolor="#2563eb",
+                    bg="#eef2f7" if is_head else "#ffffff",
+                    fg="#1f2329", insertbackground="#1f2329",
+                )
+                e.insert(0, val)
+                e.grid(row=r, column=c, sticky="nsew", ipady=6, padx=1, pady=1)
+                e.bind("<MouseWheel>", self._wheel)
+                line.append(e)
+            self.cells.append(line)
+
+        for c in range(len(grid[0])):
+            self.inner.columnconfigure(c, weight=1, minsize=110)
+        for r in range(len(grid)):
+            self.inner.rowconfigure(r, weight=0)
+        self.inner.update_idletasks()
+        self._refresh_scroll()
+
+    def values(self) -> list[list[str]] | None:
+        if not self.cells:
+            return None
+        return [[e.get() for e in row] for row in self.cells]
+
+    def clear(self):
+        self.build([], False)
+
+
+# ────────────────────────────── 主窗口 ──────────────────────────────
+class App(tk.Tk):
+    def __init__(self):
+        super().__init__()
+        self.title(APP_TITLE)
+        self.geometry("1200x780")
+        self.minsize(940, 620)
+        self.configure(bg="#f5f6f8")
+
+        self.F = choose_font(self, 10)
+        self.FB = choose_font(self, 10, True)
+        self.FH = choose_font(self, 15, True)
+
+        self._init_style()
+        self._build_ui()
+        self._load_sample()
+
+    # --- 样式 ---
+    def _init_style(self):
+        st = ttk.Style(self)
+        try:
+            st.theme_use("clam")
+        except tk.TclError:
+            pass
+        st.configure("TFrame", background="#f5f6f8")
+        st.configure("Card.TFrame", background="#ffffff")
+        st.configure("TLabel", background="#f5f6f8", font=self.F, foreground="#1f2329")
+        st.configure("Card.TLabel", background="#ffffff", font=self.F, foreground="#1f2329")
+        st.configure("Muted.TLabel", background="#f5f6f8", font=choose_font(self, 9),
+                     foreground="#6b7280")
+        st.configure("CardMuted.TLabel", background="#ffffff", font=choose_font(self, 9),
+                     foreground="#6b7280")
+        st.configure("Title.TLabel", background="#f5f6f8", font=self.FH, foreground="#111827")
+        st.configure("TButton", font=self.F, padding=(12, 6))
+        st.configure("Primary.TButton", font=self.FB, padding=(16, 7))
+        st.configure("TEntry", padding=4)
+        st.configure("TCheckbutton", background="#ffffff", font=self.F)
+        st.configure("TSpinbox", padding=4)
+
+    # --- 布局 ---
+    def _build_ui(self):
+        root = ttk.Frame(self, padding=(16, 14, 16, 10))
+        root.pack(fill="both", expand=True)
+        root.columnconfigure(0, weight=1)
+        root.rowconfigure(2, weight=1)
+
+        # 标题
+        head = ttk.Frame(root)
+        head.grid(row=0, column=0, sticky="ew")
+        ttk.Label(head, text="文字转表格", style="Title.TLabel").pack(side="left")
+        ttk.Label(head, text="    用逗号分列（, 或 ，），用句号分行（。或 .），换行同样算分行",
+                  style="Muted.TLabel").pack(side="left", pady=(6, 0))
+
+        # 工具栏
+        bar = ttk.Frame(root, style="Card.TFrame", padding=(14, 12))
+        bar.grid(row=1, column=0, sticky="ew", pady=(12, 12))
+        for i in range(8):
+            bar.columnconfigure(i, weight=0)
+
+        ttk.Label(bar, text="列数", style="Card.TLabel").grid(row=0, column=0, padx=(0, 6))
+        self.var_cols = tk.IntVar(value=3)
+        ttk.Spinbox(bar, from_=1, to=50, width=5, textvariable=self.var_cols,
+                    command=self.generate).grid(row=0, column=1, padx=(0, 18))
+
+        ttk.Label(bar, text="行数", style="Card.TLabel").grid(row=0, column=2, padx=(0, 6))
+        self.var_rows = tk.IntVar(value=4)
+        ttk.Spinbox(bar, from_=1, to=500, width=5, textvariable=self.var_rows,
+                    command=self.generate).grid(row=0, column=3, padx=(0, 18))
+
+        self.var_header = tk.BooleanVar(value=True)
+        ttk.Checkbutton(bar, text="首行为表头", variable=self.var_header,
+                        command=self.generate).grid(row=0, column=4, padx=(0, 22))
+
+        ttk.Button(bar, text="生成表格", style="Primary.TButton",
+                   command=self.generate).grid(row=0, column=5, padx=(0, 8))
+        ttk.Button(bar, text="示例", command=self._load_sample).grid(row=0, column=6, padx=(0, 8))
+        ttk.Button(bar, text="清空", command=self._clear_all).grid(row=0, column=7)
+
+        # 主体：左输入 / 右表格
+        paned = ttk.Panedwindow(root, orient="horizontal")
+        paned.grid(row=2, column=0, sticky="nsew")
+
+        left = ttk.Frame(paned, style="Card.TFrame", padding=12)
+        right = ttk.Frame(paned, style="Card.TFrame", padding=12)
+        paned.add(left, weight=1)
+        paned.add(right, weight=1)
+        left.rowconfigure(2, weight=1)
+        left.columnconfigure(0, weight=1)
+        right.rowconfigure(2, weight=1)
+        right.columnconfigure(0, weight=1)
+
+        ttk.Label(left, text="输入文字", style="Card.TLabel",
+                  font=self.FB).grid(row=0, column=0, sticky="w")
+        ttk.Label(left, text="示例：姓名,年龄,城市。张三,20,北京。",
+                  style="CardMuted.TLabel").grid(row=1, column=0, sticky="w", pady=(0, 8))
+
+        box = tk.Frame(left, background="#ffffff")
+        box.grid(row=2, column=0, sticky="nsew")
+        box.rowconfigure(0, weight=1)
+        box.columnconfigure(0, weight=1)
+        self.txt = tk.Text(box, wrap="word", font=self.F, relief="flat",
+                           highlightthickness=1, highlightbackground="#d8dde6",
+                           highlightcolor="#2563eb", padx=8, pady=8,
+                           undo=True)
+        vs = ttk.Scrollbar(box, orient="vertical", command=self.txt.yview)
+        self.txt.configure(yscrollcommand=vs.set)
+        self.txt.grid(row=0, column=0, sticky="nsew")
+        vs.grid(row=0, column=1, sticky="ns")
+        self.txt.bind("<KeyRelease>", lambda e: self.generate())
+
+        lbtns = ttk.Frame(left, style="Card.TFrame")
+        lbtns.grid(row=3, column=0, sticky="ew", pady=(10, 0))
+        ttk.Button(lbtns, text="粘贴剪贴板", command=self._paste).pack(side="left")
+        ttk.Button(lbtns, text="清空输入", command=lambda: (self.txt.delete("1.0", "end"),
+                                                          self.generate())).pack(side="left", padx=8)
+
+        ttk.Label(right, text="表格（单元格可直接点击修改）", style="Card.TLabel",
+                  font=self.FB).grid(row=0, column=0, sticky="w")
+        ttk.Label(right, text="导出前会读取你修改后的内容", style="CardMuted.TLabel"
+                  ).grid(row=1, column=0, sticky="w", pady=(0, 8))
+        self.sheet = Sheet(right, self.F, self.FB)
+        self.sheet.grid(row=2, column=0, sticky="nsew")
+
+        # 底栏：导出
+        bottom = ttk.Frame(root, style="Card.TFrame", padding=(14, 10))
+        bottom.grid(row=3, column=0, sticky="ew", pady=(12, 0))
+        ttk.Label(bottom, text="导出：", style="Card.TLabel").pack(side="left")
+        for txt, kind in (("CSV", "csv"), ("Excel", "xlsx"), ("Word", "docx"),
+                          ("Markdown", "md"), ("HTML", "html")):
+            ttk.Button(bottom, text=txt,
+                       command=lambda k=kind: self.export(k)).pack(side="left", padx=(0, 6))
+        ttk.Button(bottom, text="复制到剪贴板",
+                   command=self.copy_tsv).pack(side="left", padx=(8, 0))
+
+        self.var_status = tk.StringVar(value="就绪")
+        ttk.Label(bottom, textvariable=self.var_status, style="CardMuted.TLabel"
+                  ).pack(side="right")
+
+    # ── 功能 ──
+    def _load_sample(self):
+        self.txt.delete("1.0", "end")
+        self.txt.insert("1.0", SAMPLE)
+        self.var_cols.set(3)
+        self.var_rows.set(4)
+        self.var_header.set(True)
+        self.generate()
+
+    def _clear_all(self):
+        self.txt.delete("1.0", "end")
+        self.sheet.clear()
+        self.var_status.set("已清空")
+
+    def _paste(self):
+        try:
+            data = self.clipboard_get()
+        except tk.TclError:
+            return
+        self.txt.delete("1.0", "end")
+        self.txt.insert("1.0", data)
+        self.generate()
+
+    def generate(self):
+        text = self.txt.get("1.0", "end").strip()
+        if not text:
+            self.sheet.clear()
+            self.var_status.set("请输入文字")
+            return
+        try:
+            cols = max(1, min(50, int(self.var_cols.get())))
+            rows = max(1, min(500, int(self.var_rows.get())))
+        except (tk.TclError, ValueError):
+            return
+
+        grid, notes = parse_text(text, cols, rows)
+        if not grid:
+            self.sheet.clear()
+            self.var_status.set(notes[0] if notes else "解析失败")
+            return
+
+        if rows * cols > 3000:
+            if not messagebox.askyesno("表格较大",
+                                       f"将生成 {rows} 行 × {cols} 列（共 {rows*cols} 个单元格），"
+                                       "界面可能变慢，是否继续？"):
+                return
+
+        self.sheet.build(grid, self.var_header.get())
+        msg = f"已生成 {rows} 行 × {cols} 列"
+        if notes:
+            msg += "（有自动修正）"
+            self.bell()
+            messagebox.showwarning("已自动修正", "\n".join(notes))
+        self.var_status.set(msg)
+
+    # ── 导出 ──
+    def export(self, kind: str):
+        grid = self.sheet.values()
+        if not grid:
+            messagebox.showwarning("提示", "还没有表格可以导出。")
+            return
+
+        exts = {"csv": (".csv", "CSV 文件"), "xlsx": (".xlsx", "Excel 工作簿"),
+                "docx": (".docx", "Word 文档"), "md": (".md", "Markdown 文件"),
+                "html": (".html", "HTML 文件")}
+        ext, desc = exts[kind]
+        stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        path = filedialog.asksaveasfilename(
+            title="导出表格", defaultextension=ext,
+            initialfile=f"表格-{stamp}{ext}",
+            filetypes=[(desc, f"*{ext}"), ("所有文件", "*.*")])
+        if not path:
+            return
+
+        try:
+            if kind == "csv":
+                with open(path, "w", newline="", encoding="utf-8-sig") as f:
+                    csv.writer(f).writerows(grid)
+            elif kind == "md":
+                Path(path).write_text(self._to_markdown(grid), encoding="utf-8")
+            elif kind == "html":
+                Path(path).write_text(self._to_html(grid), encoding="utf-8")
+            elif kind == "xlsx":
+                self._save_xlsx(Path(path), grid)
+            elif kind == "docx":
+                self._save_docx(Path(path), grid)
+        except ImportError as e:
+            messagebox.showwarning("缺少依赖", str(e))
+            return
+        except Exception as e:  # noqa: BLE001
+            messagebox.showerror("导出失败", f"{type(e).__name__}: {e}")
+            return
+
+        self.var_status.set(f"已导出 {Path(path).name}")
+        messagebox.showinfo("完成", f"已导出：\n{path}")
+
+    @staticmethod
+    def _to_markdown(grid):
+        esc = lambda s: s.replace("|", "\\|").replace("\n", " ")
+        lines = ["| " + " | ".join(esc(c) for c in grid[0]) + " |",
+                 "| " + " | ".join("---" for _ in grid[0]) + " |"]
+        lines += ["| " + " | ".join(esc(c) for c in row) + " |" for row in grid[1:]]
+        return "\n".join(lines) + "\n"
+
+    @staticmethod
+    def _to_html(grid):
+        from html import escape
+
+        def row(tag, cells):
+            return "<tr>" + "".join(f"<{tag}>{escape(c)}</{tag}>" for c in cells) + "</tr>"
+
+        body = row("th", grid[0]) + "".join(row("td", r) for r in grid[1:])
+        return ("<!DOCTYPE html><html lang='zh-CN'><head><meta charset='utf-8'>"
+                "<title>表格</title><style>"
+                "body{font-family:'Microsoft YaHei',sans-serif;padding:24px}"
+                "table{border-collapse:collapse}"
+                "th,td{border:1px solid #c9d1dc;padding:6px 12px;text-align:left}"
+                "th{background:#eef2f7}"
+                "</style></head><body><table>" + body + "</table></body></html>")
+
+    @staticmethod
+    def _save_xlsx(path, grid):
+        try:
+            from openpyxl import Workbook
+            from openpyxl.styles import Alignment, Font
+        except ImportError:
+            raise ImportError("导出 Excel 需要 openpyxl，请先运行：\n\n    pip install openpyxl")
+
+        wb = Workbook()
+        ws = wb.active
+        for r in grid:
+            ws.append(r)
+        for cell in ws[1]:
+            cell.font = Font(bold=True)
+        for column in ws.columns:
+            width = max(text_width(str(c.value or "")) for c in column)
+            ws.column_dimensions[column[0].column_letter].width = min(60, max(10, width + 4))
+        for row in ws.iter_rows():
+            for cell in row:
+                cell.alignment = Alignment(vertical="top", wrap_text=True)
+        wb.save(path)
+
+    @staticmethod
+    def _save_docx(path, grid):
+        try:
+            from docx import Document
+        except ImportError:
+            raise ImportError("导出 Word 需要 python-docx，请先运行：\n\n    pip install python-docx")
+
+        doc = Document()
+        table = doc.add_table(rows=0, cols=len(grid[0]))
+        table.style = "Light Grid Accent 1"
+        for r in grid:
+            cells = table.add_row().cells
+            for i, v in enumerate(r):
+                cells[i].text = v
+        for cell in table.rows[0].cells:
+            for p in cell.paragraphs:
+                for run in p.runs:
+                    run.bold = True
+        doc.save(path)
+
+    def copy_tsv(self):
+        grid = self.sheet.values()
+        if not grid:
+            messagebox.showwarning("提示", "还没有表格可以复制。")
+            return
+        text = "\n".join("\t".join(r) for r in grid)
+        self.clipboard_clear()
+        self.clipboard_append(text)
+        self.update()
+        self.var_status.set("已复制到剪贴板，可直接粘贴进 Excel")
+
+
+def main():
+    enable_dpi()
+    app = App()
+    app.mainloop()
+
+
+if __name__ == "__main__":
+    main()
