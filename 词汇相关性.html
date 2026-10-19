@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>概念织网｜专业术语探索器</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: light-dark(#f5f6f4, #101412);
+    --surface: light-dark(#ffffff, #191f1c);
+    --surface-2: light-dark(#f0f3ef, #222a26);
+    --text: light-dark(#202823, #eaf0eb);
+    --muted: light-dark(#6f7b73, #a1afa5);
+    --border: light-dark(#dfe5df, #303a33);
+    --accent: light-dark(#286b52, #83d0ad);
+    --accent-soft: light-dark(#e7f3ec, #233b2f);
+    --orange: light-dark(#b96c36, #e9ae78);
+    --orange-soft: light-dark(#fbefe4, #3e2d20);
+    --shadow: 0 16px 50px light-dark(#1c35240a, #00000028);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; }
+  button, input { font: inherit; }
+  button { cursor: pointer; }
+  #app { min-height: 100vh; width: 100%; background-color: var(--bg); color: var(--text); border-radius: 0; }
+  .shell { max-width: 1240px; margin: 0 auto; padding: 24px 26px 48px; }
+  .topbar { display:flex; align-items:center; justify-content:space-between; gap:18px; padding-bottom: 28px; }
+  .brand { display:flex; align-items:center; gap:11px; font-weight:750; letter-spacing:-.03em; }
+  .brandmark { width:35px; height:35px; border-radius:12px; background:var(--accent); color:white; display:grid; place-items:center; font-size:19px; box-shadow: 0 5px 16px #286b5222; }
+  .brand small { display:block; font-size:10px; letter-spacing:.16em; color:var(--muted); font-weight:650; margin-top:2px; }
+  .topnote { color:var(--muted); font-size:12px; border:1px solid var(--border); border-radius:999px; padding:8px 12px; background:var(--surface); }
+  .hero { display:grid; grid-template-columns:minmax(0, 1.15fr) minmax(250px, .85fr); align-items:end; gap:36px; margin: 20px 0 27px; }
+  .eyebrow { display:flex; gap:8px; align-items:center; color:var(--accent); text-transform:uppercase; letter-spacing:.15em; font-size:11px; font-weight:800; margin-bottom:14px; }
+  .eyebrow:before { content:""; width:19px; height:2px; background:var(--accent); }
+  h1 { font-size:clamp(32px, 4.2vw, 52px); line-height:1.12; letter-spacing:-.055em; margin:0; font-weight:760; }
+  h1 span { color:var(--accent); }
+  .hero p { max-width:500px; color:var(--muted); line-height:1.75; font-size:14px; margin:14px 0 0; }
+  .principle { border-left:2px solid var(--accent); padding: 4px 0 4px 17px; color:var(--muted); font-size:13px; line-height:1.75; }
+  .principle strong { display:block; color:var(--text); font-size:14px; margin-bottom:4px; }
+  .search-panel { display:flex; gap:10px; padding:10px; border:1px solid var(--border); border-radius:20px; background:var(--surface); box-shadow:var(--shadow); }
+  .search-icon { display:grid; place-items:center; color:var(--muted); width:35px; font-size:21px; }
+  .search-panel input { flex:1; min-width:0; border:0; outline:0; background:transparent; color:var(--text); font-size:16px; padding: 6px 0; }
+  .search-panel input::placeholder { color:var(--muted); opacity:.8; }
+  .primary { background:var(--accent); color:white; border:0; border-radius:13px; padding:12px 20px; font-weight:700; transition:transform .15s, opacity .15s; }
+  .primary:hover { opacity:.9; transform:translateY(-1px); }
+  .examples { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:14px 3px 25px; color:var(--muted); font-size:12px; }
+  .chip { color:var(--text); background:var(--surface); border:1px solid var(--border); padding:7px 12px; border-radius:999px; font-size:12px; transition:border-color .15s, background .15s; }
+  .chip:hover, .chip.active { border-color:var(--accent); background:var(--accent-soft); }
+  .modebar { display:flex; align-items:center; justify-content:space-between; gap:16px; margin: 26px 0 15px; }
+  .tabs { display:flex; gap:5px; padding:5px; border:1px solid var(--border); background:var(--surface-2); border-radius:15px; }
+  .tab { border:0; background:transparent; color:var(--muted); padding:10px 17px; border-radius:11px; font-size:13px; font-weight:700; }
+  .tab.active { color:var(--text); background:var(--surface); box-shadow:0 2px 8px #0000000b; }
+  .tab .tabicon { margin-right:7px; }
+  .modehint { color:var(--muted); font-size:12px; text-align:right; }
+  .workspace { display:grid; grid-template-columns:minmax(275px, .82fr) minmax(0, 1.55fr); gap:18px; align-items:start; }
+  .panel { background:var(--surface); border:1px solid var(--border); border-radius:22px; overflow:hidden; }
+  .concept-launcher { align-self:start; }
+  .concept-open { display:flex; width:100%; min-height:210px; align-items:flex-start; gap:13px; padding:21px; text-align:left; color:var(--text); background:transparent; border:0; }
+  .concept-open:hover { background:var(--surface-2); }
+  .concept-open-icon { display:grid; place-items:center; flex:0 0 38px; height:38px; border-radius:12px; color:var(--accent); background:var(--accent-soft); font-size:21px; }
+  .concept-open-copy { display:flex; flex:1; min-width:0; flex-direction:column; gap:8px; }
+  .concept-open-label { color:var(--accent); font-weight:800; font-size:10px; letter-spacing:.12em; }
+  .concept-open-copy strong { font-size:20px; line-height:1.4; overflow-wrap:anywhere; }
+  .concept-open-copy > span:last-child { color:var(--muted); font-size:12px; line-height:1.7; }
+  .concept-open-action { align-self:flex-end; margin-left:-51px; padding-top:18px; color:var(--accent); font-size:11px; font-weight:750; white-space:nowrap; }
+  .modal-backdrop[hidden] { display:none !important; }
+  .modal-backdrop { position:fixed; inset:0; z-index:1000; display:grid; place-items:center; padding:22px; background:light-dark(#101a1480, #000000a8); backdrop-filter:blur(5px); }
+  .modal-card { width:min(720px, 100%); max-height:min(86vh, 820px); overflow:auto; background:var(--surface); border:1px solid var(--border); border-radius:23px; box-shadow:0 24px 90px #00000030; animation:modal-enter .18s ease-out; }
+  @keyframes modal-enter { from { opacity:0; transform:translateY(9px) scale(.99); } to { opacity:1; transform:translateY(0) scale(1); } }
+  .modal-head { position:sticky; top:0; z-index:2; display:flex; align-items:center; justify-content:space-between; gap:16px; padding:18px 22px; background:var(--surface); border-bottom:1px solid var(--border); }
+  .modal-head-title { font-weight:760; font-size:14px; }
+  .modal-head-sub { color:var(--muted); font-size:11px; margin-top:4px; }
+  .modal-close { display:grid; place-items:center; width:34px; height:34px; border:1px solid var(--border); border-radius:10px; background:var(--surface-2); color:var(--muted); font-size:20px; }
+  .modal-content { padding:23px 26px 26px; }
+  .modal-content .concept-name { font-size:clamp(26px, 4vw, 38px); }
+  .modal-content .definition { font-size:14px; }
+  .modal-content .path { grid-template-columns:repeat(2, minmax(0, 1fr)); column-gap:22px; }
+  .modal-content .pathrow:not(:last-child):before { display:none; }
+  .modal-content .pathrow { padding:12px; border:1px solid var(--border); border-radius:12px; background:var(--surface-2); }
+  .modal-content .warn { margin-top:8px; }
+  @media (max-width: 850px) { .workspace { grid-template-columns:1fr; } }
+  @media (max-width: 520px) { .concept-open { min-height:0; padding:17px; } .concept-open-action { display:none; } .modal-backdrop { padding:10px; } .modal-card { max-height:92vh; border-radius:17px; } .modal-content { padding:18px; } .modal-content .path { grid-template-columns:1fr; } }
+  .panel-head { display:flex; justify-content:space-between; gap:12px; align-items:center; padding:19px 21px 15px; border-bottom:1px solid var(--border); }
+  .panel-title { font-weight:760; letter-spacing:-.02em; font-size:15px; }
+  .panel-sub { color:var(--muted); font-size:11px; margin-top:5px; }
+  .tinylabel { color:var(--muted); font-size:10px; border:1px solid var(--border); padding:5px 8px; border-radius:7px; white-space:nowrap; }
+  .center-concept { padding:21px; }
+  .concept-kicker { font-size:11px; letter-spacing:.12em; color:var(--accent); font-weight:800; }
+  .concept-name { font-size:27px; letter-spacing:-.04em; font-weight:790; margin:8px 0 8px; line-height:1.25; overflow-wrap:anywhere; }
+  .domainline { color:var(--muted); font-size:12px; display:flex; align-items:center; gap:7px; }
+  .dot { width:6px; height:6px; border-radius:50%; background:var(--accent); display:inline-block; }
+  .definition { line-height:1.85; font-size:13px; margin:18px 0; }
+  .rule { height:1px; background:var(--border); margin:18px 0; }
+  .sectionline { display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:12px; font-weight:750; }
+  .sectionline span:last-child { color:var(--muted); font-size:10px; font-weight:500; }
+  .path { display:grid; gap:0; margin-top:14px; }
+  .pathrow { display:grid; grid-template-columns:26px 1fr; gap:10px; position:relative; padding-bottom:16px; }
+  .pathrow:not(:last-child):before { content:""; position:absolute; left:12px; top:25px; bottom:0; width:1px; background:var(--border); }
+  .pathnum { position:relative; z-index:1; width:25px; height:25px; display:grid; place-items:center; border-radius:9px; background:var(--surface-2); color:var(--muted); font-size:10px; font-weight:800; }
+  .pathrow strong { display:block; font-size:12px; margin:2px 0 4px; }
+  .pathrow p { margin:0; color:var(--muted); font-size:11px; line-height:1.55; }
+  .filters { display:flex; flex-wrap:wrap; gap:7px; padding:14px 20px; border-bottom:1px solid var(--border); }
+  .filter { color:var(--muted); background:transparent; border:1px solid var(--border); padding:6px 10px; border-radius:8px; font-size:11px; }
+  .filter.active { color:var(--accent); border-color:var(--accent); background:var(--accent-soft); }
+  .results { padding:15px; display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; }
+  .result-card { position:relative; text-align:left; border:1px solid var(--border); background:var(--surface); border-radius:15px; padding:15px; color:var(--text); min-width:0; transition:transform .15s, border-color .15s, background .15s; }
+  .result-card:hover { transform:translateY(-2px); border-color:var(--accent); }
+  .result-card.selected { background:var(--accent-soft); border-color:var(--accent); }
+  .result-top { display:flex; gap:8px; align-items:start; justify-content:space-between; }
+  .rank { display:inline-grid; place-items:center; width:23px; height:23px; border-radius:7px; background:var(--surface-2); color:var(--muted); font-size:10px; font-weight:800; flex-shrink:0; }
+  .score { color:var(--accent); font-size:11px; font-weight:800; white-space:nowrap; }
+  .result-name { font-size:14px; font-weight:760; margin:12px 0 8px; line-height:1.4; overflow-wrap:anywhere; }
+  .reltype { display:inline-block; font-size:10px; border-radius:6px; background:var(--surface-2); color:var(--muted); padding:4px 7px; margin-bottom:9px; }
+  .result-desc { color:var(--muted); font-size:11px; line-height:1.7; min-height:38px; }
+  .bridge { display:flex; align-items:center; justify-content:space-between; color:var(--accent); font-size:10px; margin-top:13px; font-weight:750; }
+  .details { margin:0 15px 15px; padding:15px 17px; background:var(--surface-2); border-radius:15px; border:1px solid var(--border); }
+  .details-head { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .details h3 { margin:0; font-size:15px; }
+  .close-detail { border:0; background:transparent; color:var(--muted); font-size:18px; padding:1px 4px; }
+  .details p { margin:9px 0 0; color:var(--muted); font-size:12px; line-height:1.8; }
+  .source-links { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:13px; padding-top:12px; border-top:1px solid var(--border); }
+  .source-links strong { width:100%; color:var(--text); font-size:11px; }
+  .source-links a, .empty-state a { display:inline-block; color:var(--accent); font-size:11px; text-decoration:none; border:1px solid var(--border); border-radius:8px; padding:7px 9px; }
+  .source-links a:hover, .empty-state a:hover { text-decoration:underline; border-color:var(--accent); }
+  .empty-state { grid-column:1/-1; padding:24px 18px; border:1px dashed var(--border); border-radius:14px; color:var(--muted); font-size:12px; line-height:1.8; }
+  .empty-state strong { color:var(--text); display:block; font-size:14px; margin-bottom:6px; }
+  .empty-state .source-links-inline { display:flex; flex-wrap:wrap; gap:8px; margin-top:13px; }
+  .detail-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:13px; }
+  .secondary { border:1px solid var(--border); background:var(--surface); border-radius:9px; padding:8px 11px; font-size:11px; color:var(--text); }
+  .secondary:hover { border-color:var(--accent); }
+  .bottom-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:18px; }
+  .method { padding:19px 20px; }
+  .method h3 { font-size:13px; margin:0 0 8px; }
+  .method p { color:var(--muted); font-size:12px; line-height:1.8; margin:0; }
+  .formula { margin-top:12px; padding:11px 12px; border-radius:10px; background:var(--surface-2); font-size:11px; line-height:1.8; }
+  .formula strong { color:var(--accent); }
+  .warn { margin-top:19px; border:1px dashed var(--border); padding:13px 15px; color:var(--muted); font-size:11px; line-height:1.75; border-radius:12px; }
+  .footer { margin-top:24px; border-top:1px solid var(--border); padding-top:15px; display:flex; align-items:center; justify-content:space-between; gap:12px; color:var(--muted); font-size:10px; }
+  .footer b { color:var(--text); }
+  @media (max-width: 850px) {
+    .shell { padding:18px 15px 30px; }
+    .hero { grid-template-columns:1fr; gap:18px; margin-top:14px; }
+    .principle { max-width:620px; }
+    .workspace { grid-template-columns:1fr; }
+    .bottom-grid { grid-template-columns:1fr; }
+    .modebar { align-items:flex-start; flex-direction:column; }
+    .modehint { text-align:left; }
+  }
+  @media (max-width: 520px) {
+    .topnote { display:none; }
+    h1 { font-size:34px; }
+    .search-panel { border-radius:15px; gap:4px; padding:7px; }
+    .search-panel input { font-size:14px; }
+    .primary { padding:10px 13px; }
+    .results { grid-template-columns:1fr; }
+    .tab { padding:9px 11px; font-size:12px; }
+    .footer { align-items:flex-start; flex-direction:column; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand"><div class="brandmark">⌘</div><div>概念织网<small>CONCEPT ATLAS / 专业术语探索器</small></div></div>
+      <div class="topnote">本地概念索引 · 可解释排序</div>
+    </header>
+
+    <section class="hero">
+      <div>
+        <div class="eyebrow">Explore beyond definitions</div>
+        <h1>从一个概念，<br><span>走进一张知识网络。</span></h1>
+        <p>不只找“相似词”。沿着定义、机制与方法深入理解，也可以跨越学科边界，寻找类比、灵感与新的研究问题。</p>
+      </div>
+      <div class="principle"><strong>同一个概念，两种探索路线</strong>知识路径强调关系的准确性与证据；创意路径强调可解释的跨领域连接。每条关联都需要说明“为什么有关”。</div>
+    </section>
+
+    <form class="search-panel" id="searchForm">
+      <div class="search-icon">⌕</div>
+      <input id="searchInput" value="长程相互作用" aria-label="输入专业术语" placeholder="输入专业术语，例如：注意力机制、光合作用……" autocomplete="off" />
+      <button class="primary" type="submit">开始探索 ↗</button>
+    </form>
+    <div class="examples"><span>试试：</span>
+      <button class="chip active" data-term="长程相互作用">长程相互作用</button>
+      <button class="chip" data-term="注意力机制">注意力机制</button>
+      <button class="chip" data-term="光合作用">光合作用</button>
+      <button class="chip" data-term="电介质响应">电介质响应</button>
+      <button class="chip" data-term="机器学习原子势">机器学习原子势</button>
+    </div>
+
+    <div class="modebar">
+      <div class="tabs" role="tablist" aria-label="探索模式">
+        <button class="tab active" data-mode="knowledge" role="tab" aria-selected="true"><span class="tabicon">◈</span>知识探索</button>
+        <button class="tab" data-mode="creative" role="tab" aria-selected="false"><span class="tabicon">✳</span>创意联想</button>
+      </div>
+      <div class="modehint" id="modeHint">从定义、机制、数学工具、应用与局限逐层深入</div>
+    </div>
+
+    <section class="workspace">
+      <aside class="panel concept-launcher">
+        <div class="panel-head"><div><div class="panel-title">概念起点</div><div class="panel-sub">点击打开概念定义与探索路径</div></div><span class="tinylabel">START NODE</span></div>
+        <button class="concept-open" id="openConcept" type="button" aria-haspopup="dialog" aria-controls="conceptDialog">
+          <span class="concept-open-icon">◈</span>
+          <span class="concept-open-copy"><span class="concept-open-label">中心概念 / 01</span><strong id="conceptNamePreview">长程相互作用</strong><span id="conceptDomainPreview">计算物理 · 分子模拟 · 机器学习势</span></span>
+          <span class="concept-open-action">查看详情 ↗</span>
+        </button>
+      </aside>
+
+      <section class="panel">
+        <div class="panel-head"><div><div class="panel-title" id="resultTitle">与它直接相关的概念</div><div class="panel-sub" id="resultSub">按关系强度排序 · 点击卡片查看关联理由</div></div><span class="tinylabel" id="resultCount">06 NODES</span></div>
+        <div class="filters" id="filters">
+          <button class="filter active" data-filter="全部">全部</button>
+          <button class="filter" data-filter="物理基础">物理基础</button>
+          <button class="filter" data-filter="数学与算法">数学与算法</button>
+          <button class="filter" data-filter="建模与验证">建模与验证</button>
+        </div>
+        <div class="results" id="results"></div>
+        <div class="details" id="details" hidden>
+          <div class="details-head"><h3 id="detailName">关联概念</h3><button class="close-detail" id="closeDetail" aria-label="关闭详情">×</button></div>
+          <p id="detailText"></p>
+          <div class="detail-actions"><button class="secondary" id="exploreRelated">以此概念继续探索 ↗</button><button class="secondary" id="copyRelation">复制关联说明</button></div>
+          <div class="source-links" id="sourceLinks"></div>
+        </div>
+      </section>
+    </section>
+
+    <div class="modal-backdrop" id="conceptDialog" role="dialog" aria-modal="true" aria-labelledby="conceptName" hidden>
+      <section class="modal-card">
+        <header class="modal-head"><div><div class="modal-head-title">概念起点</div><div class="modal-head-sub">定义、领域背景与推荐探索路径</div></div><button class="modal-close" id="closeConcept" type="button" aria-label="关闭弹窗">×</button></header>
+        <div class="modal-content">
+          <div class="concept-kicker">中心概念 / 01</div>
+          <div class="concept-name" id="conceptName">长程相互作用</div>
+          <div class="domainline"><span class="dot"></span><span id="conceptDomain">计算物理 · 分子模拟 · 机器学习势</span></div>
+          <div class="definition" id="conceptDefinition">相距较远的粒子或系统之间仍不可忽略的相互影响。它可能来自库仑作用、引力或其他缓慢衰减的相互作用，处理时常需要兼顾物理准确性与计算效率。</div>
+          <div class="rule"></div>
+          <div class="sectionline"><span id="pathTitle">推荐知识路径</span><span>从基础到应用</span></div>
+          <div class="path" id="pathList">
+            <div class="pathrow"><div class="pathnum">01</div><div><strong>物理来源</strong><p>先确定相互作用的物理机制与衰减特征。</p></div></div>
+            <div class="pathrow"><div class="pathnum">02</div><div><strong>数学表达</strong><p>理解势函数、边界条件与求和形式。</p></div></div>
+            <div class="pathrow"><div class="pathnum">03</div><div><strong>计算方法</strong><p>比较直接求和、Ewald 类方法与近似算法。</p></div></div>
+            <div class="pathrow"><div class="pathnum">04</div><div><strong>建模与验证</strong><p>检查精度、复杂度、适用范围和误差来源。</p></div></div>
+          </div>
+          <div class="warn" id="pathFoot">建议路径是学习顺序，不代表概念之间只有这一种关系。切换到创意联想，可从其他学科寻找结构相似的思想。</div>
+        </div>
+      </section>
+    </div>
+
+    <section class="bottom-grid">
+      <div class="panel method">
+        <h3>01 / 相关性不是一种关系</h3>
+        <p>知识探索回答“它在知识体系中与什么有关”；创意联想回答“它能与哪些思想形成有用的连接”。两种模式使用不同的排序目标，避免把近义词、因果关系和类比关系混成一个分数。</p>
+        <div class="formula"><strong>知识路径</strong> = 关系类型基线 + 概念文本重合度 + 解释完整度<br><strong>创意路径</strong> = 联想关系类型基线 + 概念文本重合度 + 解释完整度<br><span>指数用于本地候选排序，不是概率、客观语义相似度或文献证据。</span></div>
+      </div>
+      <div class="panel method">
+        <h3>02 / 排序结果应该“说得清”</h3>
+        <p>每个关联词不只展示排名，还要标记关系类型、解释连接依据，并允许用户继续沿着它探索。创意联想可以更大胆，但必须写出中间的“桥梁”，而不是随机列出看似新奇的词。</p>
+        <div class="formula"><strong>建议的结果结构</strong><br>关联词 → 关系标签 → 为什么相关 → 可靠性 / 新颖性 → 继续探索</div>
+      </div>
+    </section>
+    <footer class="footer"><span><b>概念织网</b> · 专业术语的双路径探索</span><span>排序来自本地概念关系与文本特征；外部检索链接用于核验，不代表本页已实时读取文献。排序指数不是概率或学术证据。</span></footer>
+  </main>
+</div>
+<script>
+const DB = {
+  "长程相互作用": {
+    domain:"计算物理 · 分子模拟 · 机器学习势",
+    definition:"相距较远的粒子或系统之间仍不可忽略的相互影响。它可能来自库仑作用、引力或其他缓慢衰减的相互作用，处理时常需要兼顾物理准确性与计算效率。",
+    path:[['物理来源','先确定相互作用的物理机制与衰减特征。'],['数学表达','理解势函数、边界条件与求和形式。'],['计算方法','比较直接求和、Ewald 类方法与近似算法。'],['建模与验证','检查精度、复杂度、适用范围和误差来源。']],
+    knowledge:[
+      {name:'库仑相互作用',type:'物理基础',score:98,desc:'典型的长程相互作用，作用强度随距离按反比平方规律变化。',why:'它是讨论带电体系长程作用时最直接的物理例子。可从势能形式、边界条件与屏蔽效应继续深入。'},
+      {name:'静电势',type:'物理基础',score:93,desc:'用势函数描述电荷分布产生的空间作用。',why:'它把电荷分布与相互作用能联系起来，是从物理问题进入数学表述的重要中间概念。'},
+      {name:'Ewald 求和',type:'数学与算法',score:90,desc:'将长程库仑求和拆为更容易计算的实空间与倒空间部分。',why:'周期体系中的库仑求和通常收敛慢，Ewald 思路利用分解换取可控的计算效率。'},
+      {name:'周期性边界条件',type:'数学与算法',score:84,desc:'通过周期复制模拟有限计算单元代表的延展体系。',why:'周期边界会改变长程作用的求和方式，因此是决定算法形式与物理解释的关键条件。'},
+      {name:'屏蔽效应',type:'物理基础',score:80,desc:'其他电荷或介质响应会削弱有效相互作用。',why:'屏蔽决定长程作用在具体环境中能延伸多远，也为引入环境相关参数提供物理动机。'},
+      {name:'机器学习原子势',type:'建模与验证',score:73,desc:'利用数据驱动模型近似原子体系的能量、力与相互作用。',why:'许多局域模型难以自然表达长程贡献，因此需要考虑显式长程项、混合建模或适用范围限制。'}
+    ],
+    creative:[
+      {name:'注意力机制',type:'结构类比',score:94,desc:'根据输入之间的关联强度，动态分配信息聚合的权重。',why:'可迁移的连接是“远处的信息仍可能重要”。但注意力权重并不等价于物理相互作用，类比适合启发模型设计，不是物理证明。'},
+      {name:'快速多极子方法',type:'算法迁移',score:92,desc:'把远距离粒子群的影响压缩为较低成本的近似表示。',why:'与长程相互作用计算共享一个核心挑战：许多远距离贡献都重要，但逐个精确计算昂贵。'},
+      {name:'多尺度建模',type:'跨尺度连接',score:87,desc:'在不同空间或时间尺度间建立可交换信息的表示。',why:'长程效应提示我们，局部描述未必足够；可探索怎样把局部细节与全局约束放到同一框架中。'},
+      {name:'图神经网络',type:'模型设计灵感',score:82,desc:'以节点和边表示实体及其关系，并进行迭代信息传递。',why:'局部邻域消息传递容易实现，但多跳传播和全局信息会带来成本与误差；这与长程建模的结构性难题相呼应。'},
+      {name:'传播网络',type:'跨领域类比',score:75,desc:'一个节点的影响可以通过网络传递至相距较远的节点。',why:'可以借助网络传播的视角思考间接影响、衰减和路径，但传播关系与物理势能仍是不同对象。'},
+      {name:'可辨识性',type:'研究问题启发',score:69,desc:'判断模型中的不同因素能否由观察数据可靠地区分。',why:'如果短程和长程贡献在数据中混在一起，模型可能无法唯一识别各自作用；这会影响参数解释与可迁移性。'}
+    ]
+  },
+  "注意力机制": {
+    domain:"机器学习 · 深度学习 · 表征建模",
+    definition:"一种根据查询与候选信息之间的匹配程度，为不同信息分配权重并进行加权聚合的机制。它让模型不必对所有输入位置一视同仁。",
+    path:[['基本组件','区分 Query、Key、Value 与加权聚合。'],['数学计算','理解相似度、缩放、Softmax 与权重矩阵。'],['模型结构','比较自注意力、交叉注意力与多头注意力。'],['应用与限制','评估计算复杂度、长序列处理与可解释性。']],
+    knowledge:[
+      {name:'Query / Key / Value',type:'数学与算法',score:98,desc:'分别用于提出查询、计算匹配以及承载待聚合的信息。',why:'这三个向量或表示构成经典注意力机制的基础计算流程。'},
+      {name:'Softmax',type:'数学与算法',score:94,desc:'把一组实数映射为和为 1 的非负权重。',why:'注意力计算通常用 Softmax 将匹配分数转换为归一化权重。'},
+      {name:'自注意力',type:'数学与算法',score:91,desc:'序列中的位置彼此计算匹配，并聚合来自同一序列的信息。',why:'它是 Transformer 等模型中捕获上下文依赖的关键结构。'},
+      {name:'Transformer',type:'建模与验证',score:87,desc:'以注意力模块为核心构建的神经网络架构。',why:'理解注意力机制后，Transformer 是学习其如何嵌入完整模型的自然下一步。'},
+      {name:'位置编码',type:'建模与验证',score:80,desc:'向模型提供序列顺序或位置相关信息。',why:'注意力运算本身不自动理解顺序，因此很多架构还需显式或隐式位置表示。'},
+      {name:'计算复杂度',type:'建模与验证',score:74,desc:'衡量输入规模增长时计算量与内存需求怎样变化。',why:'标准全连接自注意力在序列长度上常产生平方级的成对交互成本。'}
+    ],
+    creative:[
+      {name:'人类注意力',type:'认知类比',score:94,desc:'有限认知资源会选择性地投入到某些信号。',why:'两者都涉及选择性加权，但生物注意力与模型中的数值运算并不等同。'},
+      {name:'检索系统',type:'系统架构灵感',score:91,desc:'从大量候选内容中找到与当前问题匹配的信息。',why:'可以把注意力看作在可计算的候选集合中进行软匹配；这启发了检索与生成结合的架构。'},
+      {name:'投票机制',type:'结构类比',score:85,desc:'多个候选根据一定规则共同影响最终结果。',why:'注意力权重类似每个信息源在当前上下文中的相对贡献，但权重是可学习的连续值。'},
+      {name:'信息瓶颈',type:'理论连接',score:81,desc:'研究表征如何保留任务相关信息并压缩其他信息。',why:'注意力选择哪些信息参与聚合，可以引出“模型关注了什么、遗漏了什么”的问题。'},
+      {name:'动态路由',type:'算法迁移',score:78,desc:'根据输入内容动态决定信息或计算流向。',why:'注意力权重体现输入依赖的路由倾向，可启发稀疏计算或模块化网络。'},
+      {name:'认知偏差',type:'批判性联想',score:70,desc:'信息选择与评价中可能出现系统性偏差。',why:'这不是模型注意力的直接同义词，但可提醒研究者：权重分配不必然等于可靠的重要性判断。'}
+    ]
+  },
+  "光合作用": {
+    domain:"生物学 · 生物化学 · 能量转换",
+    definition:"植物、藻类和部分细菌把光能转化为化学能，并利用相应反应物形成有机物的过程。光反应与碳固定等阶段协同完成能量转化。",
+    path:[['能量输入','理解光子吸收与色素分子的作用。'],['电子与质子传递','追踪光反应中电子传递链与能量储存。'],['碳固定','理解二氧化碳如何进入有机物合成过程。'],['环境因素','分析光照、温度、水分与二氧化碳浓度的影响。']],
+    knowledge:[
+      {name:'叶绿素',type:'物理基础',score:98,desc:'吸收特定波长光能的重要色素。',why:'叶绿素及相关色素负责捕获光能，是光反应开始的关键组成。'},
+      {name:'光反应',type:'物理基础',score:94,desc:'将光能转化为化学能载体并伴随电子传递。',why:'它是光合作用能量转换的基础过程之一。'},
+      {name:'二氧化碳固定',type:'数学与算法',score:88,desc:'将无机碳纳入有机分子中的生化过程。',why:'这是光合作用实现碳进入生物质的关键步骤。'},
+      {name:'叶绿体',type:'物理基础',score:85,desc:'植物细胞中进行光合作用的主要细胞器。',why:'它提供组织相关反应、膜结构与酶系统的空间环境。'},
+      {name:'光合效率',type:'建模与验证',score:80,desc:'描述输入光能有多少被转化并保存在化学能中。',why:'它把分子机制连接到可测量的生理表现和环境条件。'},
+      {name:'碳循环',type:'建模与验证',score:72,desc:'碳在大气、生物、海洋与地质系统间的循环。',why:'光合作用是全球碳循环的重要入口过程之一。'}
+    ],
+    creative:[
+      {name:'太阳能电池',type:'功能类比',score:95,desc:'把入射光能转化为可利用的电能。',why:'两者都涉及光吸收与能量转换，适合比较自然系统和工程系统的效率与损失机制。'},
+      {name:'人工光合',type:'技术迁移',score:92,desc:'借鉴自然光合作用设计光驱动燃料或化学品合成路线。',why:'这是从生物机制走向能源材料与催化研发的直接跨领域方向。'},
+      {name:'能量级联',type:'结构类比',score:87,desc:'能量经过多个阶段转移、转换并伴随损失。',why:'可以用能量流图梳理过程瓶颈，并比较各步骤的效率约束。'},
+      {name:'自修复材料',type:'跨领域启发',score:78,desc:'在损伤后通过内在机制恢复部分功能。',why:'生物系统的稳态与修复能力能启发材料设计，但具体机制需要单独论证。'},
+      {name:'生态网络',type:'系统视角',score:76,desc:'不同生物与环境通过物质和能量流形成网络。',why:'从分子过程扩展到生态系统，可以研究局部机制如何影响更大尺度的能量流。'},
+      {name:'光催化',type:'邻近研究方向',score:73,desc:'利用光激发驱动化学反应的催化研究方向。',why:'它与光合作用共享光吸收和反应驱动的研究元素，但催化体系的具体机理不等同于生物过程。'}
+    ]
+  },
+  "电介质响应": {
+    domain:"电磁学 · 凝聚态物理 · 材料科学",
+    definition:"介质在外加电场作用下产生极化，并以介电常数、极化率、频率响应等量表现出的电学响应。它连接微观电荷位移与宏观电磁性质。",
+    path:[['微观极化机制','区分电子、离子、偶极取向等贡献。'],['宏观表征','理解极化强度、介电常数与边界条件。'],['频率响应','研究弛豫、共振、色散与损耗。'],['材料设计','联系结构、温度和外场对响应的调控。']],
+    knowledge:[
+      {name:'极化强度',type:'物理基础',score:97,desc:'描述材料单位体积的电偶极矩总量。',why:'它是外场作用下介质内部电荷与偶极重排的核心宏观描述。'},
+      {name:'介电常数',type:'物理基础',score:95,desc:'表征介质对电场与电位移关系的响应。',why:'它是描述电介质响应最常用的宏观参数之一。'},
+      {name:'极化率',type:'物理基础',score:91,desc:'刻画微观实体在外电场下产生诱导偶极矩的能力。',why:'极化率把微观结构与宏观介电响应联系起来。'},
+      {name:'频率色散',type:'数学与算法',score:83,desc:'响应随外场频率变化的现象。',why:'材料中的不同极化机制具有不同的时间尺度，所以响应往往依赖频率。'},
+      {name:'介电损耗',type:'建模与验证',score:78,desc:'交变电场下部分输入能量转为热等耗散形式。',why:'只看介电常数通常不足以描述器件表现，还需研究损耗与弛豫。'},
+      {name:'光学响应',type:'建模与验证',score:72,desc:'材料在光频电磁场下的响应，可由介电函数等量描述。',why:'光学性质与频率相关介电响应密切相连，是从静态极化走向光学性质的重要桥梁。'}
+    ],
+    creative:[
+      {name:'光学常数',type:'性质映射',score:94,desc:'折射率与消光系数描述光在介质中的传播和吸收。',why:'频率相关介电函数可以与折射率等光学量建立数学联系，适合探索计算与实验之间的映射。'},
+      {name:'神经响应',type:'数学类比',score:84,desc:'系统在输入刺激下随时间产生变化的输出。',why:'可用线性响应、频率响应和时间尺度的思路类比分析，但物理机制不同。'},
+      {name:'系统辨识',type:'方法迁移',score:82,desc:'根据输入输出数据估计系统的动力学参数。',why:'介电谱包含频率依赖信息，可把系统辨识的思想用于估计弛豫时间与响应参数。'},
+      {name:'共振',type:'跨领域连接',score:80,desc:'外部驱动频率与系统特征尺度接近时响应增强。',why:'共振广泛出现在机械、声学、电磁与量子系统中，可用共同的频率响应语言比较。'},
+      {name:'微观到宏观的上尺度',type:'建模思路',score:77,desc:'从局部实体的响应推导整体可观测量。',why:'极化率到介电函数的联系体现了微观模型如何进入宏观材料表征。'},
+      {name:'材料逆向设计',type:'研究方向',score:74,desc:'从目标性质反推候选组成、结构和处理条件。',why:'若能理解极化机制与介电响应间的可控联系，就可以尝试从目标电学/光学性质反推材料设计空间。'}
+    ]
+  },
+  "机器学习原子势": {
+    domain:"计算材料科学 · 分子动力学 · 机器学习",
+    definition:"利用机器学习模型近似原子体系势能面，通常从原子结构预测总能量和原子力，以接近量子化学或第一性原理计算的精度执行更大规模模拟。",
+    path:[['数据与标签','明确结构、能量、力以及数据覆盖范围。'],['原子表示','构建平移、旋转、置换等对称性一致的表示。'],['势能面学习','拟合能量并通过梯度得到原子力。'],['验证与部署','测试外推、稳定性、长程效应和计算成本。']],
+    knowledge:[
+      {name:'势能面',type:'物理基础',score:98,desc:'描述原子构型与系统势能之间的函数关系。',why:'机器学习原子势的目标是近似势能面，并通常通过能量梯度获取力。'},
+      {name:'原子力',type:'物理基础',score:94,desc:'由势能对原子坐标的负梯度得到。',why:'力是分子动力学推进原子轨迹所需的关键物理量。'},
+      {name:'等变神经网络',type:'数学与算法',score:89,desc:'让模型输出在旋转等变换下按规定方式变化。',why:'原子体系受几何对称性约束，等变表示能够把这些先验纳入网络结构。'},
+      {name:'主动学习',type:'建模与验证',score:86,desc:'选择最有信息量的新样本进行昂贵计算并更新模型。',why:'它可针对不确定或高风险结构补充数据，提升数据效率与外推可靠性。'},
+      {name:'分子动力学',type:'建模与验证',score:82,desc:'用势能与力积分牛顿运动方程以研究原子运动。',why:'学习得到的原子势常被用于加速分子动力学模拟。'},
+      {name:'长程相互作用',type:'物理基础',score:78,desc:'局部截断模型未必能充分表示的远距离物理贡献。',why:'带电、极化或其他长程效应可能需要显式处理或专门的模型设计。'}
+    ],
+    creative:[
+      {name:'多保真学习',type:'方法迁移',score:94,desc:'联合使用不同成本和精度的数据源学习同一系统。',why:'昂贵的高精度电子结构数据与便宜的低精度近似数据可以分工协作，降低训练成本。'},
+      {name:'不确定性量化',type:'可靠性设计',score:92,desc:'估计模型预测中知识不足或数据噪声带来的不确定性。',why:'原子势部署到未知构型时，可靠性不应只由平均误差衡量；不确定性可帮助识别风险。'},
+      {name:'可微分模拟',type:'跨领域连接',score:87,desc:'让模拟过程的输出对参数可求导，以便优化参数或设计。',why:'原子势本身可微，进一步让模拟流程可微可以连接材料逆向设计与梯度优化。'},
+      {name:'数字孪生',type:'系统类比',score:81,desc:'用计算模型持续映射和预测真实系统状态。',why:'原子势可作为材料微观数字模型的一部分，但可靠性依赖数据、模型与实验校准。'},
+      {name:'能量守恒',type:'物理约束',score:78,desc:'封闭系统的总能量在理想动力学下保持不变。',why:'由统一能量函数导出的保守力能够帮助模拟保持物理一致性，这也是能量模型的重要设计原则。'},
+      {name:'逆向材料设计',type:'目标驱动设计',score:75,desc:'从目标性质搜索可能实现该目标的结构或组成。',why:'可把原子势作为快速候选筛选器，再结合高精度计算和实验形成验证闭环。'}
+    ]
+  }
+};
+
+let mode = 'knowledge';
+let filter = '全部';
+let selectedItem = null;
+let currentTerm = '长程相互作用';
+const input = document.getElementById('searchInput');
+const $ = id => document.getElementById(id);
+const modeHints = {
+  knowledge:'从定义、机制、数学工具、应用与局限逐层深入',
+  creative:'寻找有依据的跨领域类比、方法迁移与研究灵感'
+};
+function makeFallback(term) {
+  return {
+    domain:'待识别领域 · 通用探索模板',
+    definition:'当前原型没有该术语的内置示例数据。真实产品可先识别领域与术语含义，再从可信知识库和语义模型生成有依据的关联。下面先展示可扩展的探索结构。',
+    path:[['定义与范围','先检索教材、综述或权威知识库，确认术语边界。'],['核心机制','寻找该概念成立的条件、机制或关键假设。'],['邻近方法','比较常用模型、算法、测量方式或工具。'],['应用与局限','定位真实应用、失效边界和仍未解决的问题。']],
+    knowledge:[
+      {name:term+' 的定义',type:'物理基础',score:96,desc:'先明确术语定义、适用范围和常见歧义。',why:'这是知识探索的起点。正式版本应引用教科书、论文或权威数据库，而不应只凭词面扩写。'},
+      {name:term+' 的工作机制',type:'物理基础',score:89,desc:'分析该概念如何产生、运行或被观察。',why:'机制关系比泛泛的主题相似更能帮助用户理解概念为什么成立。'},
+      {name:term+' 的数学表达',type:'数学与算法',score:84,desc:'查看方程、变量、假设条件或计算形式。',why:'专业概念往往可借助数学定义和关键假设进行精确比较。'},
+      {name:term+' 的常用方法',type:'数学与算法',score:79,desc:'比较实现该概念的经典方法与替代方法。',why:'方法关联可以把理论概念延伸到可操作的研究工具。'},
+      {name:term+' 的典型应用',type:'建模与验证',score:73,desc:'寻找该概念参与的任务、系统或实验场景。',why:'应用关联能说明概念在何种条件下有实际价值。'},
+      {name:term+' 的局限与开放问题',type:'建模与验证',score:66,desc:'了解常见失效条件、争议与尚未解决的问题。',why:'限制与开放问题常常是下一步研究选题的入口。'}
+    ],
+    creative:[
+      {name:'与 '+term+' 结构相似的系统',type:'结构类比',score:93,desc:'寻找不同领域中具有相似输入、过程与输出关系的系统。',why:'结构相似的系统可以提供建模灵感，但要进一步检验各组成部分能否一一对应。'},
+      {name:'能够迁移的方法',type:'算法迁移',score:89,desc:'筛选其他领域解决相近计算或推理难题的方法。',why:'方法迁移能带来新工具，但必须明确原方法的假设与本问题是否兼容。'},
+      {name:'跨尺度连接',type:'跨领域连接',score:84,desc:'把概念与微观机制、宏观行为或系统级性质联系起来。',why:'尺度变化会暴露新的变量、约束和解释方式。'},
+      {name:'可检验的类比假设',type:'研究问题启发',score:79,desc:'把联想改写为能够被数据、计算或实验检验的假设。',why:'能提出验证标准的类比才更可能变成可用的研究思路。'},
+      {name:'相反案例',type:'反向思考',score:73,desc:'寻找不满足该概念特征、但表面上相似的系统。',why:'反例有助于明确概念边界，避免类比泛化。'},
+      {name:'与 '+term+' 有关的开放问题',type:'研究灵感',score:68,desc:'从当前方法的成本、精度或适用范围寻找研究缺口。',why:'把概念连接到明确的研究限制，可以形成更具体的问题清单。'}
+    ]
+  };
+}
+function tokenize(text) {
+  const value = String(text || '').toLowerCase();
+  const out = new Set((value.match(/[a-z0-9][a-z0-9._+-]*/g) || []).filter(x => x.length > 1));
+  for (const run of value.match(/[\u3400-\u9fff]+/g) || []) {
+    if (run.length === 1) out.add(run);
+    for (let size = 2; size <= Math.min(4, run.length); size++) {
+      for (let i = 0; i <= run.length - size; i++) out.add(run.slice(i, i + size));
+    }
+  }
+  return out;
+}
+function scoreItem(item, data) {
+  if (data.isSearchFallback) return item.score || 0;
+  const weights = mode === 'knowledge'
+    ? {'物理基础':82,'数学与算法':77,'建模与验证':71}
+    : {'结构类比':75,'认知类比':75,'功能类比':79,'算法迁移':81,'方法迁移':82,'跨领域连接':78,'跨领域类比':75,'系统视角':72,'研究问题启发':77,'研究灵感':75,'目标驱动设计':77,'可靠性设计':78,'性质映射':77,'模型设计灵感':76,'技术迁移':81,'理论连接':76,'批判性联想':68,'反向思考':70,'邻近研究方向':78};
+  const rootText = `${currentTerm} ${data.domain} ${data.definition} ${(data.path || []).map(x => x.join(' ')).join(' ')}`;
+  const itemText = `${item.name} ${item.type} ${item.desc} ${item.why}`;
+  const a = tokenize(rootText), b = tokenize(itemText);
+  let common = 0;
+  for (const token of a) if (b.has(token)) common++;
+  const overlap = common / Math.sqrt(Math.max(1, a.size * b.size));
+  const explanation = Math.min(2, Math.floor(String(item.why || '').length / 90));
+  return Math.max(1, Math.min(99, Math.round((weights[item.type] || 68) + overlap * 36 + explanation)));
+}
+function buildSearchData(term) {
+  const queryTokens = tokenize(term);
+  const entries = new Map();
+  for (const [rootName, root] of Object.entries(DB)) {
+    const rootNode = {name:rootName,type:'概念节点',desc:root.definition,why:`本地概念索引中的主题节点；领域：${root.domain}`,rootName,root};
+    entries.set(rootName, rootNode);
+    for (const item of [...root.knowledge, ...root.creative]) {
+      const candidate = {...item,rootName,root};
+      if (!entries.has(item.name) || candidate.score > entries.get(item.name).score) entries.set(item.name, candidate);
+    }
+  }
+  const hits = [...entries.values()].map(item => {
+    const haystack = `${item.name} ${item.type} ${item.desc} ${item.why} ${item.rootName} ${item.root.domain} ${item.root.definition}`;
+    const candidateTokens = tokenize(haystack);
+    let common = 0;
+    for (const token of queryTokens) if (candidateTokens.has(token)) common++;
+    const exact = haystack.toLowerCase().includes(term.toLowerCase()) ? 18 : 0;
+    const score = Math.min(98, Math.round((common / Math.max(1, queryTokens.size)) * 80 + exact));
+    return {...item,score,matchCount:common};
+  }).filter(item => item.score >= 18 && item.matchCount > 0).sort((a,b) => b.score - a.score);
+  const toResult = item => ({
+    name:item.name,
+    type:'本地词项匹配',
+    score:item.score,
+    desc:`索引主题：${item.rootName}。${item.desc}`,
+    why:`本地文本索引与“${term}”命中 ${item.matchCount} 个词项特征。这个结果只是检索线索，不证明二者存在确定的学术关系；请通过外部文献检索核验。`,
+    sourceRoot:item.rootName
+  });
+  const results = hits.slice(0,8).map(toResult);
+  return {
+    isSearchFallback:true,
+    domain:'本地概念索引 · 词项检索',
+    definition:results.length
+      ? `“${term}”没有独立的内置概念卡片。下面是从现有专业术语索引中按词项重合检索到的候选线索；匹配分数不代表语义相似度、因果关系或事实可靠性。`
+      : `本地概念索引中没有找到与“${term}”有足够词项重合的内容。为避免编造关联词，当前不生成虚构结果；可以使用下方外部检索入口查找真实资料。`,
+    path:[['先核实定义','通过教材、综述或权威数据库确定术语的准确含义。'],['检索邻近术语','查看论文关键词、摘要和参考文献中的关联概念。'],['确认关系类型','判断候选是定义、组成、方法、应用，还是仅在文本中共同出现。'],['验证跨域联想','创意类比需要说明可对应的结构或方法，并进一步验证。']],
+    knowledge:results,
+    creative:results.map(item=>({...item,type:'待核验的联想线索',why:`仅按本地索引词项重合发现此线索，尚未建立有效的跨领域类比。${item.why}`}))
+  };
+}
+function getData(term) { return DB[term] || buildSearchData(term); }
+function renderPath(path) {
+  $('pathList').innerHTML = path.map((p,i)=>`<div class="pathrow"><div class="pathnum">${String(i+1).padStart(2,'0')}</div><div><strong>${esc(p[0])}</strong><p>${esc(p[1])}</p></div></div>`).join('');
+}
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function render() {
+  currentTerm = input.value.trim() || '未命名概念';
+  const data = getData(currentTerm);
+  $('conceptName').textContent = currentTerm;
+  $('conceptNamePreview').textContent = currentTerm;
+  $('conceptDomain').textContent = data.domain;
+  $('conceptDomainPreview').textContent = data.domain;
+  $('conceptDefinition').textContent = data.definition;
+  renderPath(data.path);
+  $('pathTitle').textContent = mode === 'knowledge' ? '推荐知识路径' : '联想发散路径';
+  $('pathFoot').textContent = mode === 'knowledge' ? '建议路径是学习顺序，不代表概念之间只有这一种关系。每一步都可以继续展开。' : '创意联想不是随机发散：每一步都应说明相似结构、可迁移方法或可验证的假设。';
+  $('modeHint').textContent = data.isSearchFallback ? '未命中内置概念卡：仅显示本地文本检索线索，需到外部来源核验' : modeHints[mode];
+  $('resultTitle').textContent = mode === 'knowledge' ? '与它直接相关的概念' : '从它出发，可以联想到';
+  $('resultSub').textContent = data.isSearchFallback ? '按本地词项重合排序 · 不等同于学术相关性判断' : (mode === 'knowledge' ? '本地关系类型 + 文本特征启发式排序 · 分数不是概率' : '按关系类型与文本特征启发式排序 · 类比仍需验证');
+  const categories = [...new Set(data[mode].map(item => item.type))];
+  const allFilters = ['全部', ...categories];
+  if (!allFilters.includes(filter)) filter = '全部';
+  const list = data[mode].map(item => ({...item,computedScore:scoreItem(item,data)})).filter(item => filter === '全部' || item.type === filter).sort((a,b) => b.computedScore-a.computedScore);
+  $('resultCount').textContent = String(list.length).padStart(2,'0')+' NODES';
+  const searchQ = encodeURIComponent(currentTerm);
+  $('results').innerHTML = list.length ? list.map((item,i)=>`<button class="result-card ${selectedItem && selectedItem.name===item.name?'selected':''}" data-name="${esc(item.name)}" type="button"><div class="result-top"><span class="rank">${String(i+1).padStart(2,'0')}</span><span class="score">${data.isSearchFallback?'词项':'排序'} ${item.computedScore}</span></div><div class="result-name">${esc(item.name)}</div><span class="reltype">${esc(mode==='creative'?'✳ '+item.type:item.type)}</span><div class="result-desc">${esc(item.desc)}</div><div class="bridge"><span>查看关联理由</span><span>↗</span></div></button>`).join('') : `<div class="empty-state"><strong>当前索引没有足够依据</strong>没有为“${esc(currentTerm)}”编造关联词。可打开外部检索源，检查论文、结构化知识或相关术语。<div class="source-links-inline"><a href="https://www.wikidata.org/w/index.php?search=${searchQ}" target="_blank" rel="noopener noreferrer">Wikidata 搜索</a><a href="https://openalex.org/works?search=${searchQ}" target="_blank" rel="noopener noreferrer">OpenAlex 文献</a><a href="https://scholar.google.com/scholar?q=${searchQ}" target="_blank" rel="noopener noreferrer">Google Scholar</a></div></div>`;
+  $('filters').innerHTML = allFilters.map(value => `<button class="filter ${value===filter?'active':''}" data-filter="${esc(value)}">${esc(value)}</button>`).join('');
+  if (!list.some(x=>selectedItem && x.name===selectedItem.name)) closeDetails();
+  document.querySelectorAll('.chip').forEach(chip=>chip.classList.toggle('active',chip.dataset.term===currentTerm));
+  $('results').querySelectorAll('.result-card').forEach(card => card.addEventListener('click',()=>showDetails(list.find(x=>x.name===card.dataset.name))));
+}
+function showDetails(item) {
+  selectedItem = item;
+  $('details').hidden = false;
+  $('detailName').textContent = item.name;
+  const prefix = !DB[currentTerm] ? '本地文本匹配说明：' : (mode === 'knowledge' ? '关联解释：' : '联想桥梁：');
+  $('detailText').textContent = prefix + item.why;
+  render();
+  $('details').hidden = false;
+  $('detailName').textContent = item.name;
+  $('detailText').textContent = prefix + item.why;
+  const q = encodeURIComponent(`${currentTerm} ${item.name}`);
+  $('sourceLinks').innerHTML = `<strong>外部核验入口（不会影响本页本地排序）</strong><a href="https://www.wikidata.org/w/index.php?search=${q}" target="_blank" rel="noopener noreferrer">Wikidata</a><a href="https://openalex.org/works?search=${q}" target="_blank" rel="noopener noreferrer">OpenAlex 文献</a><a href="https://scholar.google.com/scholar?q=${q}" target="_blank" rel="noopener noreferrer">Google Scholar</a>`;
+}
+function closeDetails() { selectedItem = null; $('details').hidden = true; $('sourceLinks').innerHTML = ''; }
+function switchMode(next) {
+  mode = next;
+  filter = '全部';
+  selectedItem = null;
+  document.querySelectorAll('.tab').forEach(btn => {
+    btn.classList.toggle('active',btn.dataset.mode===mode);
+    btn.setAttribute('aria-selected',String(btn.dataset.mode===mode));
+  });
+  closeDetails();
+  render();
+}
+document.getElementById('searchForm').addEventListener('submit',e=>{e.preventDefault();selectedItem=null;closeDetails();render();});
+document.querySelectorAll('.chip').forEach(btn=>btn.addEventListener('click',()=>{input.value=btn.dataset.term;selectedItem=null;closeDetails();render();}));
+document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>switchMode(btn.dataset.mode)));
+document.getElementById('filters').addEventListener('click',e=>{const btn=e.target.closest('.filter');if(!btn)return;filter=btn.dataset.filter;render();});
+document.getElementById('closeDetail').addEventListener('click',closeDetails);
+function closeConceptModal() { $('conceptDialog').hidden = true; document.body.style.overflow = ''; $('openConcept').focus(); }
+document.getElementById('openConcept').addEventListener('click',()=>{ $('conceptDialog').hidden = false; document.body.style.overflow = 'hidden'; $('closeConcept').focus(); });
+document.getElementById('closeConcept').addEventListener('click',closeConceptModal);
+document.getElementById('conceptDialog').addEventListener('click',e=>{ if(e.target === $('conceptDialog')) closeConceptModal(); });
+document.addEventListener('keydown',e=>{ if(e.key === 'Escape' && !$('conceptDialog').hidden) closeConceptModal(); });
+document.getElementById('exploreRelated').addEventListener('click',()=>{if(!selectedItem)return;input.value=selectedItem.name;selectedItem=null;closeDetails();filter='全部';render();window.scrollTo({top:0,behavior:'smooth'});});
+document.getElementById('copyRelation').addEventListener('click',async()=>{if(!selectedItem)return;const text=`${currentTerm} → ${selectedItem.name}\n${mode==='knowledge'?'关联解释':'联想桥梁'}：${selectedItem.why}`;try{await navigator.clipboard.writeText(text);$('copyRelation').textContent='已复制';}catch(e){const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();$('copyRelation').textContent='已复制';}setTimeout(()=>$('copyRelation').textContent='复制关联说明',1400);});
+render();
+</script>
+</body>
+</html>
